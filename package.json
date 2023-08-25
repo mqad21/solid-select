@@ -39,7 +39,8 @@
   "scripts": {
     "build": "rollup -c",
     "prepublishOnly": "npm run build",
-    "release": "release-it"
+    "release": "release-it",
+    "watch": "rollup -c -w"
   },
   "repository": {
     "type": "git",
@@ -61,5 +62,10 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@solid-primitives/scheduled": "^1.4.1",
+    "@tanstack/solid-virtual": "^3.0.0-beta.6",
+    "@tanstack/virtual-core": "^3.0.0-alpha.1"
   }
 }

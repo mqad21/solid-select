@@ -6,6 +6,8 @@ import {
   Component,
   ParentComponent,
   createEffect,
+  createMemo,
+  createSignal,
   on,
   createContext,
   useContext,
@@ -16,6 +18,7 @@ import {
   Value as ValueType,
   CreateSelectProps,
 } from "./create-select";
+import { createVirtualizer } from '@tanstack/solid-virtual'
 
 interface CommonProps {
   format: (
@@ -105,9 +108,8 @@ const Container: ParentComponent<ContainerProps> = (props) => {
   const select = useSelect();
   return (
     <div
-      class={`solid-select-container ${
-        props.class !== undefined ? props.class : ""
-      }`}
+      class={`solid-select-container ${props.class !== undefined ? props.class : ""
+        }`}
       data-disabled={select.disabled}
       onFocusIn={select.onFocusIn}
       onFocusOut={select.onFocusOut}
@@ -242,30 +244,73 @@ type ListProps = Pick<
 const List: Component<ListProps> = (props) => {
   const select = useSelect();
 
+  const [parentRef, setParentRef] = createSignal<HTMLDivElement | null>(null)
+
+  const virtualizer = createVirtualizer({
+    count: select.options().length,
+    getScrollElement: parentRef,
+    estimateSize: () => 45
+  })
+
+  // Scroll to top when the input value changes
+  createEffect(on(select.inputValue, () => {
+    virtualizer.scrollToIndex(0)
+  }))
+
+  const items = createMemo(() => {
+    return virtualizer.getVirtualItems().filter(item => select.options()[item.index])
+  })
+
+  const totalHeight = createMemo(() => {
+    return select.options().length * 45
+  }, select.options().length)
+
   return (
     <Show when={select.isOpen()}>
-      <div class="solid-select-list">
-        <Show
-          when={!props.loading}
+      <div class="solid-select-list" ref={setParentRef}>
+        <Show when={select.options().length > 0}
           fallback={
             <div class="solid-select-list-placeholder">
-              {props.loadingPlaceholder}
+              {props.emptyPlaceholder}
             </div>
           }
         >
-          <For
-            each={select.options()}
-            fallback={
-              <div class="solid-select-list-placeholder">
-                {props.emptyPlaceholder}
-              </div>
-            }
+          <div
+            style={{
+              height: `${totalHeight()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
           >
-            {(option: OptionType) => (
-              <Option option={option}>{props.format(option, "option")}</Option>
-            )}
-          </For>
+            <Show
+              when={!props.loading}
+              fallback={
+                <div class="solid-select-list-placeholder">
+                  {props.loadingPlaceholder}
+                </div>
+              }
+            >
+              {items().map((virtualItem) => (
+                <div
+                  key={virtualItem.key}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <Option option={select.options()[virtualItem.index]}>
+                    {props.format(select.options()[virtualItem.index], "option")}
+                  </Option>
+                </div>
+              ))}
+            </Show>
+          </div>
         </Show>
+
       </div>
     </Show>
   );

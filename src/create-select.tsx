@@ -6,6 +6,8 @@ import {
   on,
 } from "solid-js";
 
+import { debounce } from "@solid-primitives/scheduled";
+
 type Option = any;
 
 type SingleValue = any;
@@ -41,8 +43,7 @@ const createSelect = (props: CreateSelectProps) => {
       return value !== null ? [value] : [];
     } else {
       throw new Error(
-        `Incompatible value type for ${
-          config.multiple ? "multple" : "single"
+        `Incompatible value type for ${config.multiple ? "multple" : "single"
         } select.`
       );
     }
@@ -63,17 +64,31 @@ const createSelect = (props: CreateSelectProps) => {
   const clearInputValue = () => setInputValue("");
   const hasInputValue = () => !!inputValue().length;
 
+  const [options, setOptions] = createSignal<Option[]>(typeof config.options === "function" ? config.options(inputValue()) : config.options);
+
   createEffect(
     on(inputValue, (inputValue) => config.onInput?.(inputValue), {
       defer: true,
     })
   );
 
+  let inputValueDebounce: any = null;
+
   createEffect(
     on(
       inputValue,
       (inputValue) => {
-        if (inputValue && !isOpen()) {
+        inputValueDebounce?.clear()
+        inputValueDebounce = debounce(() => {
+          if (typeof config.options === "function") {
+            /* @once */
+            setOptions(
+              (config.options as Function)(inputValue)
+            )
+          }
+        }, 300)()
+
+        if (!isOpen()) {
           setIsOpen(true);
         }
       },
@@ -81,14 +96,16 @@ const createSelect = (props: CreateSelectProps) => {
     )
   );
 
-  const options =
-    typeof config.options === "function"
-      ? createMemo(
-          () => (config.options as Function)(inputValue()),
-          config.options(inputValue())
-        )
-      : () => config.options;
-  const optionsCount = () => options().length;
+
+
+  // const options =
+  //   typeof config.options === "function"
+  //     ? createMemo(
+  //         () => (config.options as Function)(inputValue()),
+  //         config.options(inputValue())
+  //       )
+  //     : () => config.options;
+  const optionsCount = createMemo(() => options().length);
 
   const pickOption = (option: Option) => {
     if (config.isOptionDisabled(option)) return;
