@@ -81,16 +81,18 @@ const createSelect = (props: CreateSelectProps) => {
         inputValueDebounce?.clear()
         inputValueDebounce = debounce(() => {
           if (typeof config.options === "function") {
+            /* @once */
             setOptions(
               (config.options as Function)(inputValue)
             )
           }
         }, 300)()
 
-        if (inputValue && !isOpen() ) {
+        if (!isOpen() && inputValue) {
           setIsOpen(true);
         }
-      }
+      },
+      { defer: true }
     )
   );
 
