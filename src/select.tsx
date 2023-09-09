@@ -259,7 +259,7 @@ const List: Component<ListProps> = (props) => {
 
   const items = createMemo(() => {
     return virtualizer.getVirtualItems().filter(item => select.options()[item.index])
-  })
+  }, select.options().length)
 
   const totalHeight = createMemo(() => {
     return select.options().length * 45
